@@ -8,7 +8,7 @@ from datetime import datetime
 import crops
 import random
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 app.config['CORS_HEADERS'] = 'Content-Type'

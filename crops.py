@@ -1,4 +1,5 @@
 def crop(crop_name):
+    crop_name = crop_name.lower()
     crop_data = {
     "wheat":["/static/images/wheat.jpg", "U.P., Punjab, Haryana, Rajasthan, M.P., bihar", "rabi","Sri Lanka, United Arab Emirates, Taiwan"],
     "paddy":["/static/images/paddy.jpg", "W.B., U.P., Andhra Pradesh, Punjab, T.N.", "kharif","Bangladesh, Saudi Arabia, Iran"],
@@ -24,4 +25,8 @@ def crop(crop_name):
     "sunflower":["sunflower.jpg",  "Karnataka, Andhra Pradesh, Maharashtra, Bihar, Orissa", "rabi", "Phillippines, United States, Bangladesh"],
     "sugarcane":["sugarcane.jpg","Uttar Pradesh, Maharashtra, Tamil Nadu, Karnataka, Andhra Pradesh" , "kharif", "Kenya, United Arab Emirates, United Kingdom"]
     }
-    return crop_data[crop_name]
+
+    if crop_name in crop_data:
+        return crop_data[crop_name]
+    else:
+        return {"error": f"Crop '{crop_name}' not found."}
