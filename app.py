@@ -1,14 +1,13 @@
-from flask import jsonify
-
-from flask import Flask, render_template
+from flask import Flask, jsonify, send_from_directory ,render_template
 from flask_cors import CORS, cross_origin
 import numpy as np
 import pandas as pd
 from datetime import datetime
 import crops
 import random
-
 import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 
 app = Flask(__name__)
 app.config['CORS_HEADERS'] = 'Content-Type'
@@ -43,31 +42,31 @@ commodity_dict = {
 
 annual_rainfall = [34,	26,	42,	35,	57,	165	,320,	275	,195,	76,	44,14,]
 base = {
-  "Paddy":1945,
-"Arhar":6300,
-"Bajra":2150,
-"Barley":1800,
-"Copra":12100,
-"Cotton":6500,
-"Sesamum":5500,
-"Gram":5500,
-"Groundnut":5550,
-"Jowar":2200,
-"Maize":1950,
-"Masoor":6800,
-"Moong":6500,
-"Niger":5500,
-"Ragi":2000,
-"Rape":5500,
-"Jute":5500,
-"Safflower":5500,
-"Soyabean":5500,
-"Sugarcane":2850,
-"Sunflower":5500,
-"Urad":6500,
-"Wheat":2275,
-}
+    "Paddy": 1245.5,
+    "Arhar": 3200,
+    "Bajra": 1175,
+    "Barley": 980,
+    "Copra": 5100,
+    "Cotton": 3600,
+    "Sesamum": 4200,
+    "Gram": 2800,
+    "Groundnut": 3700,
+    "Jowar": 1520,
+    "Maize": 1175,
+    "Masoor": 2800,
+    "Moong": 3500,
+    "Niger": 3500,
+    "Ragi": 1500,
+    "Rape": 2500,
+    "Jute": 1675,
+    "Safflower": 2500,
+    "Soyabean": 2200,
+    "Sugarcane": 2250,
+    "Sunflower": 3700,
+    "Urad": 4300,
+    "Wheat": 1350
 
+}
 commodity_list = []
 
 
@@ -142,6 +141,7 @@ def crop_profile(name):
     #print(prev_crop_values)
     #print(str(forecast_x))
     crop_data = crops.crop(name)
+    image_url = generate_price_trend_chart(name, previous_x, previous_y, forecast_x, forecast_y)
     context = {
         "name":name,
         "max_crop": max_crop,
@@ -153,12 +153,45 @@ def crop_profile(name):
         "previous_x":previous_x,
         "previous_y":previous_y,
         "current_price": current_price,
+        "vis_url": image_url, 
         "image_url":crop_data[0],
         "prime_loc":crop_data[1],
         "type_c":crop_data[2],
         "export":crop_data[3]
     }
     return jsonify (context)
+
+if not os.path.exists("visulisation"):
+    os.makedirs("visulisation")
+
+def generate_price_trend_chart(name, previous_x, previous_y, forecast_x, forecast_y):
+    """
+    Generates a line chart for previous and forecasted crop prices,
+    saves it as an image, and returns the file path.
+    """
+    image_filename = f"visulisation/{name}_trend.png"
+    
+    plt.figure(figsize=(12,6))
+    sns.lineplot(x=previous_x, y=previous_y, marker='o', label="Previous Prices", color="blue")
+    sns.lineplot(x=forecast_x, y=forecast_y, marker='s', label="Forecasted Prices", color="red")
+    plt.xticks(rotation=45)
+    plt.xlabel("Time")
+    plt.ylabel("Price")
+    plt.title(f"{name.capitalize()} Price Trends (Past and Forecast)")
+    plt.legend()
+    plt.grid(True)
+    
+    plt.savefig(image_filename)  # Save the image
+    plt.close()  # Free memory
+    
+    return f"/visulisation/{name}_trend.png"
+
+
+# Route to serve images
+@app.route('/visulisation/<path:filename>')
+def static_files(filename):
+    return send_from_directory('visulisation', filename)
+
 
 @app.route('/ticker/<item>/<number>')
 @cross_origin(origin='localhost',headers=['Content- Type','Authorization'])
