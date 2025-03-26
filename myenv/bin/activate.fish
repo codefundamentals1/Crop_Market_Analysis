@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/anish/Desktop/Workspace/Crop_Prediction/myenv
+set -gx VIRTUAL_ENV /home/anish/Desktop/Project_Folder/newfolder/Crop_Market_Analysis/myenv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

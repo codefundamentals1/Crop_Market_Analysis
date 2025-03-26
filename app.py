@@ -91,7 +91,7 @@ class Commodity:
         # fask=regressor_tree.predict(fsa)
 
     def getPredictedValue(self, value):
-        if value[1]>=2019:
+        if value[1]>=2024:
             fsa = np.array(value).reshape(1, 3)
             #print(" ",self.regressor.predict(fsa)[0])
             return self.regressor.predict(fsa)[0]
@@ -358,7 +358,10 @@ def CurrentMonth(name):
             commodity = i
             break
     current_wpi = commodity.getPredictedValue([float(current_month), current_year, current_rainfall])
+    print("in curretn month" ,current_wpi)
+    
     current_price = (base[name.capitalize()]*current_wpi)/100
+   
     return current_price
 
 def TwelveMonthsForecast(name):
@@ -366,6 +369,7 @@ def TwelveMonthsForecast(name):
     current_year = datetime.now().year
     current_rainfall = annual_rainfall[current_month - 1]
     name = name.lower()
+    print(commodity_list)
     commodity = commodity_list[0]
     for i in commodity_list:
         if name == str(i):
@@ -383,6 +387,7 @@ def TwelveMonthsForecast(name):
     min_value = 9999
     wpis = []
     current_wpi = commodity.getPredictedValue([float(current_month), current_year, current_rainfall])
+    print(current_wpi)
     change = []
 
     for m, y, r in month_with_year:
@@ -437,7 +442,7 @@ def TwelveMonthPrevious(name):
             month_with_year.append((current_month - i + 12, current_year - 1, annual_rainfall[current_month - i + 11]))
 
     for m, y, r in month_with_year:
-        current_predict = commodity.getPredictedValue([float(m), 2013, r])
+        current_predict = commodity.getPredictedValue([float(m), current_year-1, r])
         wpis.append(current_predict)
 
     for i in range(0, len(wpis)):

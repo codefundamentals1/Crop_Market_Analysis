@@ -9,7 +9,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV /home/anish/Desktop/Workspace/Crop_Prediction/myenv
+setenv VIRTUAL_ENV /home/anish/Desktop/Project_Folder/newfolder/Crop_Market_Analysis/myenv
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"
