@@ -9,6 +9,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from datetime import datetime
 
+import warnings
+from sklearn.exceptions import DataConversionWarning
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+warnings.filterwarnings("ignore", category=DataConversionWarning)
+
 app = Flask(__name__)
 
 commodity_dict = {
@@ -301,8 +306,8 @@ def generate_price_trend_chart(name, previous_x, previous_y, forecast_x, forecas
     
     image_filename = f"visualization/{name}_trend.png"
     
-    plt.figure(figsize=(12,6))
-    plt.plot(previous_x, previous_y, 'b-o', label="Historical Prices")
+    plt.figure(figsize=(6,6))
+    # plt.plot(previous_x, previous_y, 'b-o', label="Historical Prices")
     plt.plot(forecast_x, forecast_y, 'r--o', label="Forecasted Prices")
     plt.xticks(rotation=45)
     plt.xlabel("Month/Year")
@@ -333,149 +338,265 @@ def get_crop_data(name):
 ######################################################
 
 
-def TopFiveWinners():
-    """
-    Returns top 5 commodities with highest month-over-month price increase percentage
-    Format: [[name, current_price, percentage_change], ...]
-    """
-    try:
-        current_date = datetime.now()
-        current_month = current_date.month
-        current_year = current_date.year
-        prev_month = current_month - 1 if current_month > 1 else 12
-        prev_year = current_year if current_month > 1 else current_year - 1
-        
-        # Get rainfall data (with bounds checking)
-        current_rainfall = annual_rainfall[current_month - 1] if current_month <= len(annual_rainfall) else annual_rainfall[-1]
-        prev_rainfall = annual_rainfall[prev_month - 1] if prev_month <= len(annual_rainfall) else annual_rainfall[-1]
-        
-        results = []
-        
-        for commodity in commodity_list:
-            try:
-                # Get current and previous month predictions
-                current_price = commodity.predict_price(current_month, current_year, current_rainfall)
-                prev_price = commodity.predict_price(prev_month, prev_year, prev_rainfall)
-                
-                # Calculate percentage change (handle division by zero)
-                if prev_price == 0:
-                    percent_change = 0.0
-                else:
-                    percent_change = ((current_price - prev_price) / prev_price) * 100
-                
-                crop_name = commodity.getCropName()
-                results.append({
-                    'name': crop_name,
-                    'current_price': round(current_price, 2),
-                    'percent_change': round(percent_change, 2)
-                })
-                
-            except Exception as e:
-                print(f"Error processing {commodity.name}: {str(e)}")
-                continue
-        
-        # Sort by percentage change descending and take top 5
-        top_winners = sorted(results, key=lambda x: x['percent_change'], reverse=True)[:5]
-        
-        return top_winners
-    
-    except Exception as e:
-        print(f"Error in TopFiveWinners: {str(e)}")
-        return []
 
-def TopFiveLosers():
-    """
-    Returns top 5 commodities with highest month-over-month price decrease percentage
-    Format: [[name, current_price, percentage_change], ...]
-    """
-    try:
-        current_date = datetime.now()
-        current_month = current_date.month
-        current_year = current_date.year
-        prev_month = current_month - 1 if current_month > 1 else 12
-        prev_year = current_year if current_month > 1 else current_year - 1
-        
-        # Get rainfall data (with bounds checking)
-        current_rainfall = annual_rainfall[current_month - 1] if current_month <= len(annual_rainfall) else annual_rainfall[-1]
-        prev_rainfall = annual_rainfall[prev_month - 1] if prev_month <= len(annual_rainfall) else annual_rainfall[-1]
-        
-        results = []
-        
-        for commodity in commodity_list:
-            try:
-                # Get current and previous month predictions
-                current_price = commodity.predict_price(current_month, current_year, current_rainfall)
-                prev_price = commodity.predict_price(prev_month, prev_year, prev_rainfall)
-                
-                # Calculate percentage change (handle division by zero)
-                if prev_price == 0:
-                    percent_change = 0.0
-                else:
-                    percent_change = ((current_price - prev_price) / prev_price) * 100
-                
-                crop_name = commodity.getCropName()
-                results.append({
-                    'name': crop_name,
-                    'current_price': round(current_price, 2),
-                    'percent_change': round(percent_change, 2)
-                })
-                
-            except Exception as e:
-                print(f"Error processing {commodity.name}: {str(e)}")
-                continue
-        
-        # Sort by percentage change ascending and take top 5
-        top_losers = sorted(results, key=lambda x: x['percent_change'])[:5]
-        
-        return top_losers
-    
-    except Exception as e:
-        print(f"Error in TopFiveLosers: {str(e)}")
-        return []
 
-def SixMonthsForecast():
-    """
-    Returns 6-month price forecast for all commodities
-    Format: {
-        "commodity1": [(month_year, price), ...],
-        "commodity2": [(month_year, price), ...],
-        ...
-    }
-    """
-    try:
-        current_date = datetime.now()
-        forecast = {}
-        
-        for commodity in commodity_list:
-            try:
-                commodity_forecast = []
-                for i in range(1, 7):  # Next 6 months
-                    month = (current_date.month + i - 1) % 12 or 12
-                    year = current_date.year + (current_date.month + i - 1) // 12
-                    rainfall = annual_rainfall[month-1] if month <= len(annual_rainfall) else annual_rainfall[-1]
-                    
-                    price = commodity.predict_price(month, year, rainfall)
-                    commodity_forecast.append((f"{month}/{year}", round(price, 2)))
-                
-                forecast[commodity.getCropName()] = commodity_forecast
-            except Exception as e:
-                print(f"Error forecasting for {commodity.name}: {str(e)}")
-                continue
-        
-        return forecast
-    
-    except Exception as e:
-        print(f"Error in SixMonthsForecast: {str(e)}")
-        return {}
 
-#Api Route 
+#PI Route 
 @app.route('/')
 def index():
     context = {
         "top5": TopFiveWinners(),
         "bottom5": TopFiveLosers(),
+        "timestamp": datetime.now().isoformat(),
+        "status": "success"
     }
     return jsonify(context)
+
+
+
+
+def TopFiveWinners():
+    """
+    Returns the top 5 unique commodities with highest price increase percentage
+    """
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    results = []
+    processed_commodities = set()
+    
+    for commodity in commodity_list:
+        try:
+            # Skip if we've already processed this commodity
+            if commodity.name in processed_commodities:
+                continue
+                
+            processed_commodities.add(commodity.name)
+            
+            # Verify we have enough historical data
+            if len(commodity.df) < 12:  # Need at least 12 months for lag features
+                print(f"Skipping {commodity.name} - insufficient historical data")
+                continue
+            
+            # Get rainfall forecast
+            rainfall = get_rainfall_forecast(current_month, current_year)
+            
+            # Create input array with all required features
+            input_features = [
+                current_month,
+                current_year,
+                rainfall,
+                (current_month - 1) // 3 + 1,  # Quarter
+                1 if current_month in [6,7] else (2 if current_month in [8,9,10] else 3),  # Growth_Phase
+                commodity.df['Rainfall'].iloc[-1],  # Rainfall_Lag_1
+                commodity.df['Rainfall'].iloc[-2],  # Rainfall_Lag_2
+                commodity.df['Rainfall'].iloc[-3],  # Rainfall_Lag_3
+                commodity.df['Rainfall'].iloc[-12]  # Rainfall_Lag_12
+            ]
+            
+            # Convert to numpy array and reshape
+            input_array = np.array(input_features).reshape(1, -1)
+            
+            # Verify array is not empty
+            if input_array.shape[1] == 0:
+                print(f"Empty input array for {commodity.name} - check feature construction")
+                continue
+                
+            # Scale and predict
+            scaled_input = commodity.scaler.transform(input_array)
+            current_pred = commodity.model.predict(scaled_input)[0]
+            current_pred = get_price(current_pred, commodity.name)
+
+            # Previous month calculation
+            prev_month = current_month - 1 if current_month > 1 else 12
+            prev_year = current_year if current_month > 1 else current_year - 1
+            prev_rainfall = get_rainfall_forecast(prev_month, prev_year)
+            
+            # Create previous month input
+            prev_input_features = [
+                prev_month,
+                prev_year,
+                prev_rainfall,
+                (prev_month - 1) // 3 + 1,
+                1 if prev_month in [6,7] else (2 if prev_month in [8,9,10] else 3),
+                commodity.df['Rainfall'].iloc[-1],
+                commodity.df['Rainfall'].iloc[-2],
+                commodity.df['Rainfall'].iloc[-3],
+                commodity.df['Rainfall'].iloc[-12]
+            ]
+            
+            prev_input_array = np.array(prev_input_features).reshape(1, -1)
+            
+            if prev_input_array.shape[1] == 0:
+                print(f"Empty previous input array for {commodity.name}")
+                continue
+                
+            scaled_prev_input = commodity.scaler.transform(prev_input_array)
+            prev_pred = commodity.model.predict(scaled_prev_input)[0]
+            prev_pred = get_price(prev_pred, commodity.name)
+
+            # Calculate percentage change
+            if prev_pred != 0:
+                percentage_change = ((current_pred - prev_pred) / prev_pred) * 100
+            else:
+                percentage_change = 0
+                
+            results.append({
+                'commodity': commodity.name,
+                'current_price': current_pred,
+                'previous_price': prev_pred,
+                'percentage_change': percentage_change,
+                'base_price': commodity.base_price
+            })
+            
+        except Exception as e:
+            print(f"Error processing {commodity.name}: {str(e)}")
+            continue
+    
+    # Sort and get unique top 5
+    unique_results = []
+    seen_commodities = set()
+    
+    for item in sorted(results, key=lambda x: x['percentage_change'], reverse=True):
+        if item['commodity'] not in seen_commodities:
+            seen_commodities.add(item['commodity'])
+            unique_results.append(item)
+            if len(unique_results) == 5:
+                break
+    
+    # Add ranking information
+    for i, item in enumerate(unique_results):
+        item['rank'] = i + 1
+    
+    return unique_results
+
+def TopFiveLosers():
+    """
+    Returns the bottom 5 unique commodities with highest price decrease percentage
+    """
+    # First get all results using the same logic as TopFiveWinners
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    results = []
+    processed_commodities = set()
+    
+    for commodity in commodity_list:
+        try:
+            if commodity.name in processed_commodities:
+                continue
+                
+            processed_commodities.add(commodity.name)
+            
+            if len(commodity.df) < 12:
+                print(f"Skipping {commodity.name} - insufficient historical data")
+                continue
+                
+            # Current month prediction
+            rainfall = get_rainfall_forecast(current_month, current_year)
+            input_features = [
+                current_month,
+                current_year,
+                rainfall,
+                (current_month - 1) // 3 + 1,
+                1 if current_month in [6,7] else (2 if current_month in [8,9,10] else 3),
+                commodity.df['Rainfall'].iloc[-1],
+                commodity.df['Rainfall'].iloc[-2],
+                commodity.df['Rainfall'].iloc[-3],
+                commodity.df['Rainfall'].iloc[-12]
+            ]
+            
+            input_array = np.array(input_features).reshape(1, -1)
+            
+            if input_array.shape[1] == 0:
+                print(f"Empty input array for {commodity.name}")
+                continue
+                
+            scaled_input = commodity.scaler.transform(input_array)
+            current_pred = commodity.model.predict(scaled_input)[0]
+
+            current_pred = get_price(current_pred, commodity.name)
+            # Previous month prediction
+            prev_month = current_month - 1 if current_month > 1 else 12
+            prev_year = current_year if current_month > 1 else current_year - 1
+            prev_rainfall = get_rainfall_forecast(prev_month, prev_year)
+            
+            prev_input_features = [
+                prev_month,
+                prev_year,
+                prev_rainfall,
+                (prev_month - 1) // 3 + 1,
+                1 if prev_month in [6,7] else (2 if prev_month in [8,9,10] else 3),
+                commodity.df['Rainfall'].iloc[-1],
+                commodity.df['Rainfall'].iloc[-2],
+                commodity.df['Rainfall'].iloc[-3],
+                commodity.df['Rainfall'].iloc[-12]
+            ]
+            
+            prev_input_array = np.array(prev_input_features).reshape(1, -1)
+            
+            if prev_input_array.shape[1] == 0:
+                print(f"Empty previous input array for {commodity.name}")
+                continue
+                
+            scaled_prev_input = commodity.scaler.transform(prev_input_array)
+            prev_pred = commodity.model.predict(scaled_prev_input)[0]
+            prev_pred = get_price(prev_pred, commodity.name)
+
+            if prev_pred != 0:
+                percentage_change = ((current_pred - prev_pred) / prev_pred) * 100
+            else:
+                percentage_change = 0
+            
+
+            results.append({
+                'commodity': commodity.name,
+                'current_price': current_pred,
+                'previous_price': prev_pred,
+                'percentage_change': percentage_change,
+                'base_price': commodity.base_price
+            })
+            
+        except Exception as e:
+            print(f"Error processing {commodity.name}: {str(e)}")
+            continue
+    
+    # Sort and get unique bottom 5
+    unique_results = []
+    seen_commodities = set()
+    
+    for item in sorted(results, key=lambda x: x['percentage_change']):
+        if item['commodity'] not in seen_commodities:
+            seen_commodities.add(item['commodity'])
+            unique_results.append(item)
+            if len(unique_results) == 5:
+                break
+    
+    # Add ranking information
+    for i, item in enumerate(unique_results):
+        item['rank'] = i + 1
+    
+    return unique_results
+
+
+def get_rainfall_forecast(month, year):
+    """
+    Helper function to get rainfall forecast for a given month and year
+    In a real implementation, this would query your rainfall data source
+    """
+    # This is a placeholder - implement your actual rainfall forecast lookup
+    # For now, return average rainfall for the month across all years
+    try:
+        # Example: Get average rainfall for this month from historical data
+        all_rainfall = []
+        for commodity in commodity_list:
+            month_data = commodity.df[(commodity.df['Month'] == month)]
+            if not month_data.empty:
+                all_rainfall.extend(month_data['Rainfall'].values)
+        
+        return sum(all_rainfall) / len(all_rainfall) if all_rainfall else 0
+    except:
+        return 0  # Fallback value
 
 
 
